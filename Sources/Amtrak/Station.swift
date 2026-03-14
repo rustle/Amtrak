@@ -1,7 +1,7 @@
 import Foundation
 
 ///
-public struct Station: Codable {
+public struct Station: Codable, Equatable, Sendable {
     /// Name of the station in plain english
     public let name: String
     /// Station code
@@ -24,7 +24,7 @@ public struct Station: Codable {
     public let status: StationStatus?
 }
 
-public enum StationStatus: String, Codable, Sendable {
+public enum StationStatus: String, Codable, Sendable, Equatable {
     ///
     case enroute = "Enroute"
     ///
@@ -36,7 +36,7 @@ public enum StationStatus: String, Codable, Sendable {
 }
 
 ///
-public struct StationMetadata: Codable {
+public struct StationMetadata: Codable, Equatable, Sendable {
     ///
     public let name: String?
     ///

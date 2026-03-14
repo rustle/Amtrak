@@ -1,4 +1,4 @@
-public struct StaleData: Codable {
+public struct StaleData: Codable, Equatable, Sendable {
     /// Average time in milliseconds since train data was last updated in Amtrak's database
     public let avgLastUpdate: Double
     /// Number of trains that are currently active

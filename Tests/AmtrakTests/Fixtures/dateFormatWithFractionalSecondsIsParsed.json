@@ -1,0 +1,21 @@
+{
+    "48": [
+        {
+            "trainNum": "48",
+            "trainNumRaw": "48",
+            "trainID": "48-1",
+            "stations": [
+                {
+                    "name": "Chicago Union",
+                    "code": "CHI",
+                    "schArr": "2026-03-01T21:30:00-06:00",
+                    "schDep": "2026-03-01T21:30:00-06:00"
+                }
+            ],
+            "createdAt": "2026-03-02T16:24:22.000Z",
+            "updatedAt": "2026-03-02T16:24:22.000Z",
+            "lastValTS": "2026-03-02T16:23:59.000Z",
+            "alerts": []
+        }
+    ]
+}

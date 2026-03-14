@@ -56,7 +56,7 @@ public struct Config: Sendable {
 }
 
 @available(macOS 15.0.0, iOS 18.0.0, *)
-public enum ClientError: Error {
+public enum ClientError: Error, Equatable {
     case noStationFound(id: String)
     case noTrainFound(id: String)
     case noTrainsFound(number: String)
@@ -68,32 +68,45 @@ public final class Client: Sendable {
     public init(config: Config = Config.defaultConfig) {
         self.config = config
     }
+    // The API returns two distinct date formats:
+    // - Station times (schArr, schDep, arr, dep) use a timezone-offset format
+    //   reflecting the local time at that station: "2026-03-02T10:30:00-06:00"
+    // - Train-level system timestamps (createdAt, updatedAt, lastValTS) use
+    //   fractional-seconds UTC: "2026-03-02T16:24:22.000Z"
     private struct Formatters: @unchecked Sendable {
-        let formatter1: ISO8601DateFormatter
-        let formatter2: ISO8601DateFormatter
+        // Station times (schArr, schDep, arr, dep): "2026-03-02T10:30:00-06:00"
+        let withOffset: ISO8601DateFormatter
+        // Train system timestamps (createdAt, updatedAt, lastValTS): "2026-03-02T16:24:22.000Z"
+        let withFractionalSeconds: ISO8601DateFormatter
         init() {
-            // 2026-03-02T10:30:00-06:00
-            formatter1 = ISO8601DateFormatter()
-            formatter1.formatOptions = [.withInternetDateTime]
-            // 2026-03-02T15:45:00.000Z
-            formatter2 = ISO8601DateFormatter()
-            formatter2.formatOptions = [.withFractionalSeconds]
+            let withOffset = ISO8601DateFormatter()
+            withOffset.formatOptions = [.withInternetDateTime]
+            self.withOffset = withOffset
+            let withFractionalSeconds = ISO8601DateFormatter()
+            withFractionalSeconds.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            self.withFractionalSeconds = withFractionalSeconds
         }
     }
     private let formatters = Formatters()
     private func decoder() -> JSONDecoder {
         let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .custom { [unowned self] decoder in
-            let container = try decoder.singleValueContainer()
-            let dateString = try container.decode(String.self)
-            if let date = self.formatters.formatter1.date(from: dateString)  {
+        // A single formatter with [.withInternetDateTime, .withFractionalSeconds] cannot
+        // cover both formats: .withFractionalSeconds requires fractional seconds to be
+        // present, so it rejects strings like "2026-03-01T21:30:00-06:00". Two formatters
+        // with a fallback are necessary to also handle "2026-03-02T16:24:22.000Z".
+        decoder.dateDecodingStrategy = .custom { [unowned self] d in
+            let container = try d.singleValueContainer()
+            let string = try container.decode(String.self)
+            if let date = self.formatters.withOffset.date(from: string) {
                 return date
             }
-            if let date = self.formatters.formatter2.date(from: dateString)  {
+            if let date = self.formatters.withFractionalSeconds.date(from: string) {
                 return date
             }
-            throw DecodingError.dataCorruptedError(in: container,
-                                                   debugDescription: "Invalid date format")
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "Invalid date format: \(string)"
+            )
         }
         return decoder
     }

@@ -1,7 +1,7 @@
 import Foundation
 
 ///
-public struct Train: Codable {
+public struct Train: Codable, Equatable, Sendable {
     /// Name of the train route
     public let routeName: String?
     /// Train number
@@ -73,7 +73,7 @@ public enum Heading: String, Codable, Sendable, Equatable {
     case W
 }
 
-public enum TrainState: String, Codable, Sendable {
+public enum TrainState: String, Codable, Sendable, Equatable {
     case active = "Active"
     case predeparture = "Predeparture"
     case completed = "Completed"
