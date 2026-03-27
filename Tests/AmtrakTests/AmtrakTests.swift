@@ -10,7 +10,7 @@ enum AmtrakTestsError: Error {
 private let fixtureClient = Client(
     config: .init(
         baseURL: URL(string: "https://api-v3.amtraker.com/v3/")!,
-        fetch: { url in
+        fetch: { urlRequest in
             func fixture(name: String) throws -> (data: Data, response: HTTPURLResponse) {
                 guard let fixtureURL = Bundle.module.url(forResource: name,
                                                          withExtension: "json",
@@ -23,6 +23,7 @@ private let fixtureClient = Client(
                                               expectedContentLength: data.count,
                                               textEncodingName: "utf8"))
             }
+            let url = urlRequest.url!
             switch url.lastPathComponent {
             case "stations":
                 return try fixture(name: "stations")
@@ -45,9 +46,9 @@ private let fixtureClient = Client(
 private let emptyClient = Client(
     config: .init(
         baseURL: URL(string: "https://api-v3.amtraker.com/v3/")!,
-        fetch: { url in
+        fetch: { urlRequest in
             let data = Data("{}".utf8)
-            return (data, HTTPURLResponse(url: url,
+            return (data, HTTPURLResponse(url: urlRequest.url!,
                                           mimeType: "application/json",
                                           expectedContentLength: data.count,
                                           textEncodingName: "utf8"))
@@ -58,7 +59,7 @@ private let emptyClient = Client(
 @available(macOS 15.0.0, iOS 18.0.0, *)
 private let dateFormatCient = Client(config: .init(
     baseURL: URL(string: "https://api-v3.amtraker.com/v3/")!,
-    fetch: { url in
+    fetch: { urlRequest in
         let fixtureURL = try #require(
             Bundle.module.url(
                 forResource: "dateFormatWithFractionalSecondsIsParsed",
@@ -68,7 +69,7 @@ private let dateFormatCient = Client(config: .init(
         )
         let data = try Data(contentsOf: fixtureURL)
         return (data, HTTPURLResponse(
-            url: url,
+            url: urlRequest.url!,
             mimeType: "application/json",
             expectedContentLength: data.count,
             textEncodingName: "utf8"

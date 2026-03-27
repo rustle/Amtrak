@@ -1,4 +1,13 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
+#if canImport(FoundationEssentials)
+import FoundationEssentials
+#endif
+#if canImport(FoundationInternationalization)
+import FoundationInternationalization
+#endif
 
 @available(macOS 15.0.0, iOS 18.0.0, *)
 public enum Endpoint: Sendable {
@@ -16,21 +25,30 @@ public enum Endpoint: Sendable {
 
 @available(macOS 15.0.0, iOS 18.0.0, *)
 public struct Config: Sendable {
-    public typealias Fetch = @Sendable (URL) async throws -> (data: Data, response: HTTPURLResponse)
-    public static func defaultFetch() -> @Sendable (_ url: URL) async throws -> (data: Data, response: HTTPURLResponse) {
-        return { url in
-            let (data, response) = try await URLSession.shared.data(from: url)
+    // TODO: compilation options to use a library defined type instead of URLRequest and HTTPURLResponse
+    // TODO: Maybe just a protocol?
+    public typealias Fetch = @Sendable (URLRequest) async throws -> (data: Data, response: HTTPURLResponse)
+    @inlinable
+    public static func defaultFetch() -> @Sendable (_ urlRequest: URLRequest) async throws -> (data: Data, response: HTTPURLResponse) {
+        return { urlRequest in
+            let (data, response) = try await URLSession.shared.data(for: urlRequest)
             guard let httpResponse = response as? HTTPURLResponse else {
-                throw NSError(domain: NSURLErrorDomain, code: NSURLErrorUnknown, userInfo: [NSURLErrorFailingURLErrorKey: url])
+                throw NSError(domain: NSURLErrorDomain,
+                              code: NSURLErrorUnknown,
+                              userInfo: urlRequest.url.flatMap({[NSURLErrorFailingURLErrorKey: $0]}))
             }
-            guard httpResponse.statusCode == 200 else {
-                throw NSError(domain: NSURLErrorDomain, code: NSURLErrorBadServerResponse, userInfo: [NSURLErrorFailingURLErrorKey: url])
+            guard httpResponse.statusCode % 100 == 2 else {
+                throw NSError(domain: NSURLErrorDomain,
+                              code: NSURLErrorBadServerResponse,
+                              userInfo: urlRequest.url.flatMap({[NSURLErrorFailingURLErrorKey: $0,
+                                                                 "statusCode": httpResponse.statusCode]}))
             }
             return (data, httpResponse)
         }
     }
+    public static let defaultBaseURL = URL(string: "https://api-v3.amtraker.com/v3/")!
     public static let defaultConfig = Self.init(
-        baseURL: URL(string: "https://api-v3.amtraker.com/v3/")!,
+        baseURL: Self.defaultBaseURL,
         fetch: Self.defaultFetch()
     )
     let baseURL: URL
@@ -111,7 +129,7 @@ public final class Client: Sendable {
         return decoder
     }
     func fetch(from endpoint: Endpoint) async throws -> (data: Data, response: HTTPURLResponse) {
-        return try await config.fetch(config.endpointURL(endpoint))
+        return try await config.fetch(URLRequest(url: config.endpointURL(endpoint)))
     }
     public func fetchAllStations() async throws -> StationMetadataResponse {
         let (data, _) = try await fetch(from: .stations)
