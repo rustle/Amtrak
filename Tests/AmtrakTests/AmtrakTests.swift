@@ -7,21 +7,26 @@ enum AmtrakTestsError: Error {
 }
 
 @available(macOS 15.0.0, iOS 18.0.0, *)
-private let fixtureClient = Client(
+private let fixtureClient = AmtrakClient(
     config: .init(
-        baseURL: URL(string: "https://api-v3.amtraker.com/v3/")!,
+        baseURL: AmtrakClientConfig.defaultBaseURL,
         fetch: { urlRequest in
-            func fixture(name: String) throws -> (data: Data, response: HTTPURLResponse) {
+            func fixture(name: String) throws -> AmtrakClientHTTPResponse {
                 guard let fixtureURL = Bundle.module.url(forResource: name,
                                                          withExtension: "json",
                                                          subdirectory: "Fixtures") else {
                     throw AmtrakTestsError.missingFixture(name)
                 }
                 let data = try Data(contentsOf: fixtureURL)
-                return (data, HTTPURLResponse(url: url,
-                                              mimeType: "application/json",
-                                              expectedContentLength: data.count,
-                                              textEncodingName: "utf8"))
+                return AmtrakClientHTTPResponse(
+                    data: data,
+                    response: HTTPURLResponse(
+                        url: url,
+                        mimeType: "application/json",
+                        expectedContentLength: data.count,
+                        textEncodingName: "utf8"
+                    )
+                )
             }
             let url = urlRequest.url!
             switch url.lastPathComponent {
@@ -38,27 +43,34 @@ private let fixtureClient = Client(
             default:
                 throw AmtrakTestsError.missingFixture(url.lastPathComponent)
             }
-        }
+        },
+        decoder: AmtrakClientJSONDecoder()
     )
 )
 
 @available(macOS 15.0.0, iOS 18.0.0, *)
-private let emptyClient = Client(
+private let emptyClient = AmtrakClient(
     config: .init(
-        baseURL: URL(string: "https://api-v3.amtraker.com/v3/")!,
+        baseURL: AmtrakClientConfig.defaultBaseURL,
         fetch: { urlRequest in
             let data = Data("{}".utf8)
-            return (data, HTTPURLResponse(url: urlRequest.url!,
-                                          mimeType: "application/json",
-                                          expectedContentLength: data.count,
-                                          textEncodingName: "utf8"))
-        }
+            return AmtrakClientHTTPResponse(
+                data: data,
+                response: HTTPURLResponse(
+                    url: urlRequest.url!,
+                    mimeType: "application/json",
+                    expectedContentLength: data.count,
+                    textEncodingName: "utf8"
+                )
+            )
+        },
+        decoder: AmtrakClientJSONDecoder()
     )
 )
 
 @available(macOS 15.0.0, iOS 18.0.0, *)
-private let dateFormatCient = Client(config: .init(
-    baseURL: URL(string: "https://api-v3.amtraker.com/v3/")!,
+private let dateFormatCient = AmtrakClient(config: .init(
+    baseURL: AmtrakClientConfig.defaultBaseURL,
     fetch: { urlRequest in
         let fixtureURL = try #require(
             Bundle.module.url(
@@ -68,13 +80,17 @@ private let dateFormatCient = Client(config: .init(
             )
         )
         let data = try Data(contentsOf: fixtureURL)
-        return (data, HTTPURLResponse(
-            url: urlRequest.url!,
-            mimeType: "application/json",
-            expectedContentLength: data.count,
-            textEncodingName: "utf8"
-        ))
-    }
+        return AmtrakClientHTTPResponse(
+            data: data,
+            response: HTTPURLResponse(
+                url: urlRequest.url!,
+                mimeType: "application/json",
+                expectedContentLength: data.count,
+                textEncodingName: "utf8"
+            )
+        )
+    },
+    decoder: AmtrakClientJSONDecoder()
 ))
 
 // MARK: - Station metadata
@@ -94,7 +110,7 @@ private let dateFormatCient = Client(config: .init(
 @available(macOS 15.0.0, iOS 18.0.0, *)
 @Test func fetchStationUnknownThrowsNoStationFound() async throws {
     // emptyClient returns {} so "XYZ" is absent and noStationFound is thrown.
-    await #expect(throws: ClientError.noStationFound(id: "XYZ")) {
+    await #expect(throws: AmtrakClientError.noStationFound(id: "XYZ")) {
         try await emptyClient.fetchStation(id: "XYZ")
     }
 }
@@ -210,14 +226,14 @@ private let dateFormatCient = Client(config: .init(
 
 @available(macOS 15.0.0, iOS 18.0.0, *)
 @Test func fetchTrainUnknownThrowsNoTrainFound() async throws {
-    await #expect(throws: ClientError.noTrainFound(id: "99-1")) {
+    await #expect(throws: AmtrakClientError.noTrainFound(id: "99-1")) {
         try await emptyClient.fetchTrain(id: "99-1")
     }
 }
 
 @available(macOS 15.0.0, iOS 18.0.0, *)
 @Test func fetchTrainsUnknownThrowsNoTrainsFound() async throws {
-    await #expect(throws: ClientError.noTrainsFound(number: "99")) {
+    await #expect(throws: AmtrakClientError.noTrainsFound(number: "99")) {
         try await emptyClient.fetchTrains(number: "99")
     }
 }

@@ -1,4 +1,4 @@
-// swift-tools-version: 6.1
+// swift-tools-version: 6.2
 
 import PackageDescription
 
@@ -10,9 +10,28 @@ let package = Package(
             targets: ["Amtrak"]
         ),
     ],
+    traits: [
+        .init(
+            name: "AsyncHTTPClient",
+            description: "Use AsyncHTTPClient instead of URLSession for networking"
+        )
+    ],
+    dependencies: [
+        .package(
+            url: "https://github.com/swift-server/async-http-client.git",
+            from: "1.9.0"
+        )
+    ],
     targets: [
         .target(
-            name: "Amtrak"
+            name: "Amtrak",
+            dependencies: [
+                .product(
+                    name: "AsyncHTTPClient",
+                    package: "async-http-client",
+                    condition: .when(traits: ["AsyncHTTPClient"])
+                )
+            ]
         ),
         .testTarget(
             name: "AmtrakTests",
